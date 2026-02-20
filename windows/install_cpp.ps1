@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-# Run as Administrator check
+# Run as Administrator
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Warning "Please run this script as an Administrator."
     Exit 1
@@ -11,16 +11,21 @@ $is64Bit = [Environment]::Is64BitOperatingSystem
 $arch = if ($is64Bit) { "64-bit" } else { "32-bit" }
 Write-Host "System: $arch"
 
-Write-Host "Fetching latest release from WinLibs..."
+Write-Host "Fetching releases from WinLibs..."
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$apiUrl = "https://api.github.com/repos/brechtsanders/winlibs_mingw/releases/latest"
-$release = Invoke-RestMethod -Uri $apiUrl
+# Fetch ALL recent releases instead of just the single 'latest' tag
+$apiUrl = "https://api.github.com/repos/brechtsanders/winlibs_mingw/releases"
+$releases = Invoke-RestMethod -Uri $apiUrl
 
-# Dynamically find the correct filename from the latest release
-if ($is64Bit) {
-    $asset = $release.assets | Where-Object { $_.name -like "winlibs-x86_64-posix-seh-gcc-*-mingw-w64ucrt-*.zip" -and $_.name -notmatch "llvm" } | Select-Object -First 1
-} else {
-    $asset = $release.assets | Where-Object { $_.name -like "winlibs-i686-posix-dwarf-gcc-*-mingw-w64ucrt-*.zip" -and $_.name -notmatch "llvm" } | Select-Object -First 1
+# Find the newest release that contains our target zip file
+$asset = $null
+$pattern = if ($is64Bit) { "winlibs-x86_64-posix-seh-gcc-.*\.zip$" } else { "winlibs-i686-posix-dwarf-gcc-.*\.zip$" }
+
+foreach ($release in $releases) {
+    $asset = $release.assets | Where-Object { $_.name -match $pattern -and $_.name -notmatch "llvm" } | Select-Object -First 1
+    if ($asset) { 
+        break 
+    }
 }
 
 if (-not $asset) {
