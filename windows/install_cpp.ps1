@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-# Run as Administrator
+# Run as Administrator check
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Warning "Please run this script as an Administrator."
     Exit 1
@@ -16,6 +16,7 @@ Write-Host "Fetching latest release from WinLibs..."
 $apiUrl = "https://api.github.com/repos/brechtsanders/winlibs_mingw/releases/latest"
 $release = Invoke-RestMethod -Uri $apiUrl
 
+# Dynamically find the correct filename from the latest release
 if ($is64Bit) {
     $asset = $release.assets | Where-Object { $_.name -like "winlibs-x86_64-posix-seh-gcc-*-mingw-w64ucrt-*.zip" -and $_.name -notmatch "llvm" } | Select-Object -First 1
 } else {
